@@ -101,17 +101,8 @@
     }));
   }
 
-  function allTags() {
-    const set = new Set();
-    manifestOrder.forEach((fn) => {
-      const r = recipes.get(fn);
-      if (r && !r.error) r.tags.forEach((t) => set.add(t));
-    });
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'ko'));
-  }
-
   function matchesFilters(r) {
-    if (selectedTags.size > 0 && !r.tags.some((t) => selectedTags.has(t))) return false;
+    if (selectedTags.size > 0 && !Array.from(selectedTags).every((t) => r.tags.includes(t))) return false;
     if (query.trim()) {
       const q = query.trim().toLowerCase();
       const hay = (r.name + ' ' + r.tags.join(' ') + ' ' + r.body).toLowerCase();
@@ -126,16 +117,10 @@
       return;
     }
 
-    const tags = allTags();
-
-    const chipHtml = tags.map((t) => `
-      <button type="button" class="chip ${selectedTags.has(t) ? 'chip-active' : ''}" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</button>
-    `).join('');
-
     appEl.innerHTML = `
       <section class="toolbar">
         <input type="search" id="search-input" class="search-input" placeholder="레시피 이름, 재료, 태그 검색..." value="${escapeHtml(query)}">
-        <div class="tag-list">${chipHtml || '<span class="muted">태그 없음</span>'}</div>
+        <div class="tag-list" id="tag-list"></div>
         <div class="toolbar-footer">
           <span class="result-count" id="result-count"></span>
           <button type="button" id="reset-btn" class="btn-reset">초기화</button>
@@ -155,12 +140,14 @@
       selectedTags = new Set();
       renderList();
     });
-    appEl.querySelectorAll('.chip[data-tag]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const t = btn.dataset.tag;
-        if (selectedTags.has(t)) selectedTags.delete(t); else selectedTags.add(t);
-        renderList();
-      });
+    // 태그 목록은 검색어 입력마다 다시 그려지므로(선택 가능한 태그 좁히기),
+    // 이벤트 위임으로 한 번만 등록한다.
+    document.getElementById('tag-list').addEventListener('click', (e) => {
+      const btn = e.target.closest('.chip[data-tag]');
+      if (!btn) return;
+      const t = btn.dataset.tag;
+      if (selectedTags.has(t)) selectedTags.delete(t); else selectedTags.add(t);
+      renderList();
     });
   }
 
@@ -171,6 +158,8 @@
     const normal = all.filter((r) => !r.error);
     const broken = all.filter((r) => r.error);
     const filtered = normal.filter(matchesFilters);
+
+    renderTagList(filtered);
 
     const cardsHtml = filtered.map((r) => `
       <a class="card" href="#/recipe/${encodeURIComponent(r.filename)}">
@@ -194,6 +183,22 @@
 
     document.getElementById('card-grid').innerHTML = cardsHtml + brokenHtml + emptyHtml;
     document.getElementById('result-count').textContent = `${filtered.length}개 레시피${broken.length ? ` · 오류 ${broken.length}개` : ''}`;
+  }
+
+  // 현재 필터(선택된 태그 + 검색어)를 만족하는 레시피들이 가진 태그만 보여준다.
+  // 태그를 선택할수록, 검색어를 입력할수록 더 이상 결과가 없는 태그는 목록에서 사라진다.
+  function renderTagList(filtered) {
+    const tagSet = new Set();
+    filtered.forEach((r) => r.tags.forEach((t) => tagSet.add(t)));
+    // 이미 선택된 태그는 결과가 0개가 되더라도 해제할 수 있도록 항상 남겨둔다.
+    selectedTags.forEach((t) => tagSet.add(t));
+    const tags = Array.from(tagSet).sort((a, b) => a.localeCompare(b, 'ko'));
+
+    const chipHtml = tags.map((t) => `
+      <button type="button" class="chip ${selectedTags.has(t) ? 'chip-active' : ''}" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</button>
+    `).join('');
+
+    document.getElementById('tag-list').innerHTML = chipHtml || '<span class="muted">태그 없음</span>';
   }
 
   function renderDetail(filename, showRaw = false) {
