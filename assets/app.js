@@ -126,15 +126,51 @@
       return;
     }
 
-    const all = manifestOrder.map((fn) => recipes.get(fn)).filter(Boolean);
-    const normal = all.filter((r) => !r.error);
-    const broken = all.filter((r) => r.error);
-    const filtered = normal.filter(matchesFilters);
     const tags = allTags();
 
     const chipHtml = tags.map((t) => `
       <button type="button" class="chip ${selectedTags.has(t) ? 'chip-active' : ''}" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</button>
     `).join('');
+
+    appEl.innerHTML = `
+      <section class="toolbar">
+        <input type="search" id="search-input" class="search-input" placeholder="레시피 이름, 재료, 태그 검색..." value="${escapeHtml(query)}">
+        <div class="tag-list">${chipHtml || '<span class="muted">태그 없음</span>'}</div>
+        <div class="toolbar-footer">
+          <span class="result-count" id="result-count"></span>
+          <button type="button" id="reset-btn" class="btn-reset">초기화</button>
+        </div>
+      </section>
+      <section class="card-grid" id="card-grid"></section>
+    `;
+
+    renderResults();
+
+    document.getElementById('search-input').addEventListener('input', (e) => {
+      query = e.target.value;
+      renderResults();
+    });
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      query = '';
+      selectedTags = new Set();
+      renderList();
+    });
+    appEl.querySelectorAll('.chip[data-tag]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const t = btn.dataset.tag;
+        if (selectedTags.has(t)) selectedTags.delete(t); else selectedTags.add(t);
+        renderList();
+      });
+    });
+  }
+
+  // 검색창 입력마다 호출된다. 입력 요소 자체는 다시 그리지 않아야
+  // 한글 입력 중 조합(IME) 상태가 끊기지 않는다.
+  function renderResults() {
+    const all = manifestOrder.map((fn) => recipes.get(fn)).filter(Boolean);
+    const normal = all.filter((r) => !r.error);
+    const broken = all.filter((r) => r.error);
+    const filtered = normal.filter(matchesFilters);
 
     const cardsHtml = filtered.map((r) => `
       <a class="card" href="#/recipe/${encodeURIComponent(r.filename)}">
@@ -156,41 +192,8 @@
       ? '<p class="muted">조건에 맞는 레시피가 없습니다.</p>'
       : '';
 
-    appEl.innerHTML = `
-      <section class="toolbar">
-        <input type="search" id="search-input" class="search-input" placeholder="레시피 이름, 재료, 태그 검색..." value="${escapeHtml(query)}">
-        <div class="tag-list">${chipHtml || '<span class="muted">태그 없음</span>'}</div>
-        <div class="toolbar-footer">
-          <span class="result-count">${filtered.length}개 레시피${broken.length ? ` · 오류 ${broken.length}개` : ''}</span>
-          <button type="button" id="reset-btn" class="btn-reset">초기화</button>
-        </div>
-      </section>
-      <section class="card-grid">
-        ${cardsHtml}${brokenHtml}${emptyHtml}
-      </section>
-    `;
-
-    const searchInput = document.getElementById('search-input');
-    searchInput.addEventListener('input', (e) => {
-      query = e.target.value;
-      const caret = e.target.selectionStart;
-      renderList();
-      const newInput = document.getElementById('search-input');
-      newInput.focus();
-      newInput.setSelectionRange(caret, caret);
-    });
-    document.getElementById('reset-btn').addEventListener('click', () => {
-      query = '';
-      selectedTags = new Set();
-      renderList();
-    });
-    appEl.querySelectorAll('.chip[data-tag]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const t = btn.dataset.tag;
-        if (selectedTags.has(t)) selectedTags.delete(t); else selectedTags.add(t);
-        renderList();
-      });
-    });
+    document.getElementById('card-grid').innerHTML = cardsHtml + brokenHtml + emptyHtml;
+    document.getElementById('result-count').textContent = `${filtered.length}개 레시피${broken.length ? ` · 오류 ${broken.length}개` : ''}`;
   }
 
   function renderDetail(filename, showRaw = false) {
