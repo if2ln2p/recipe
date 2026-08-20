@@ -3,6 +3,7 @@
 
   const MANIFEST_URL = 'recipes/index.json';
   const RECIPES_DIR = 'recipes/';
+  const SITE_TITLE = '우리집 레시피';
 
   const appEl = document.getElementById('app');
 
@@ -101,6 +102,35 @@
     }));
   }
 
+  // --- 목록 필터 상태를 URL 해시에 반영한다 (#/?q=두부&tag=한식) ---
+  // 새로고침하거나 링크를 공유해도 검색어·태그가 유지된다.
+
+  function parseListParams(hash) {
+    const i = hash.indexOf('?');
+    if (i === -1) return { query: '', tags: new Set() };
+    const params = new URLSearchParams(hash.slice(i + 1));
+    return { query: params.get('q') || '', tags: new Set(params.getAll('tag')) };
+  }
+
+  function listHash() {
+    const params = new URLSearchParams();
+    if (query.trim()) params.set('q', query);
+    Array.from(selectedTags)
+      .sort((a, b) => a.localeCompare(b, 'ko'))
+      .forEach((t) => params.append('tag', t));
+    const s = params.toString();
+    return s ? `#/?${s}` : '#/';
+  }
+
+  // replaceState를 쓰는 이유: location.hash에 대입하면 hashchange가 발생해
+  // 목록 전체가 다시 그려지고, 그러면 검색창이 교체되어 한글 조합이 끊긴다.
+  function syncListUrl() {
+    const target = listHash();
+    if ((location.hash || '#/') !== target) {
+      history.replaceState(null, '', target);
+    }
+  }
+
   function matchesFilters(r) {
     if (selectedTags.size > 0 && !Array.from(selectedTags).every((t) => r.tags.includes(t))) return false;
     if (query.trim()) {
@@ -112,6 +142,9 @@
   }
 
   function renderList() {
+    document.title = SITE_TITLE;
+    releaseWakeLock();
+
     if (loadError) {
       appEl.innerHTML = `<div class="notice notice-error">${escapeHtml(loadError)}</div>`;
       return;
@@ -133,11 +166,13 @@
 
     document.getElementById('search-input').addEventListener('input', (e) => {
       query = e.target.value;
+      syncListUrl();
       renderResults();
     });
     document.getElementById('reset-btn').addEventListener('click', () => {
       query = '';
       selectedTags = new Set();
+      syncListUrl();
       renderList();
     });
     // 태그 목록은 검색어 입력마다 다시 그려지므로(선택 가능한 태그 좁히기),
@@ -147,6 +182,7 @@
       if (!btn) return;
       const t = btn.dataset.tag;
       if (selectedTags.has(t)) selectedTags.delete(t); else selectedTags.add(t);
+      syncListUrl();
       renderList();
     });
   }
@@ -208,12 +244,17 @@
     }
     const r = recipes.get(filename);
     if (!r) {
+      document.title = SITE_TITLE;
       appEl.innerHTML = `
         <a class="back-link" href="#/">← 목록으로</a>
         <div class="notice notice-error">레시피를 찾을 수 없습니다: ${escapeHtml(filename)}</div>
       `;
       return;
     }
+
+    document.title = `${r.name || r.filename} · ${SITE_TITLE}`;
+    // 주방에서 보는 화면이 조리 중 꺼지지 않도록 한다.
+    requestWakeLock();
 
     const mode = r.raw === null ? 'raw' : (showRaw ? 'raw' : 'rendered');
 
@@ -285,12 +326,42 @@
     }
   }
 
+  // --- 화면 꺼짐 방지 (상세 페이지에서만) ---
+  // 미지원 브라우저나 절전 모드에서는 조용히 무시된다.
+
+  let wakeLock = null;
+
+  async function requestWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    if (wakeLock && !wakeLock.released) return;
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+    } catch (e) {
+      wakeLock = null;
+    }
+  }
+
+  function releaseWakeLock() {
+    if (!wakeLock) return;
+    const lock = wakeLock;
+    wakeLock = null;
+    lock.release().catch(() => {});
+  }
+
+  function isDetailRoute() {
+    return /^#\/recipe\/.+/.test(location.hash || '');
+  }
+
   function route() {
     const hash = location.hash || '#/';
     const m = /^#\/recipe\/(.+)$/.exec(hash);
     if (m) {
       renderDetail(decodeURIComponent(m[1]));
     } else {
+      // URL에 담긴 검색어·태그를 상태로 복원한 뒤 그린다.
+      const parsed = parseListParams(hash);
+      query = parsed.query;
+      selectedTags = parsed.tags;
       renderList();
     }
     window.scrollTo(0, 0);
@@ -301,6 +372,10 @@
     await loadRecipes();
     route();
     window.addEventListener('hashchange', route);
+    // 화면을 껐다 켜거나 탭을 다시 열면 잠금이 해제되므로 다시 건다.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && isDetailRoute()) requestWakeLock();
+    });
   }
 
   init();
