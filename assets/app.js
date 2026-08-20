@@ -15,6 +15,7 @@
 
   let selectedTags = new Set();
   let query = '';
+  let lastPicked = null;
 
   function escapeHtml(str) {
     return String(str)
@@ -113,6 +114,11 @@
     return { query: params.get('q') || '', tags: new Set(params.getAll('tag')) };
   }
 
+  // 그 태그 하나만 선택된 목록으로 가는 링크 (상세 페이지의 태그에 쓴다)
+  function tagFilterHash(tag) {
+    return `#/?${new URLSearchParams([['tag', tag]]).toString()}`;
+  }
+
   function listHash() {
     const params = new URLSearchParams();
     if (query.trim()) params.set('q', query);
@@ -130,6 +136,13 @@
     if ((location.hash || '#/') !== target) {
       history.replaceState(null, '', target);
     }
+  }
+
+  // 현재 검색어·태그 조건을 만족하는 (오류 없는) 레시피 목록
+  function currentFiltered() {
+    return manifestOrder
+      .map((fn) => recipes.get(fn))
+      .filter((r) => r && !r.error && matchesFilters(r));
   }
 
   function matchesFilters(r) {
@@ -157,7 +170,10 @@
         <div class="tag-list" id="tag-list"></div>
         <div class="toolbar-footer">
           <span class="result-count" id="result-count"></span>
-          <button type="button" id="reset-btn" class="btn-reset">초기화</button>
+          <div class="toolbar-actions">
+            <button type="button" id="random-btn" class="btn-reset">아무거나</button>
+            <button type="button" id="reset-btn" class="btn-reset">초기화</button>
+          </div>
         </div>
       </section>
       <section class="card-grid" id="card-grid"></section>
@@ -176,6 +192,19 @@
       syncListUrl();
       renderList();
     });
+    // 현재 필터에 걸린 것들 중에서 고른다. 연달아 눌렀을 때
+    // 같은 레시피가 다시 나오지 않도록 직전 것은 후보에서 뺀다.
+    document.getElementById('random-btn').addEventListener('click', () => {
+      let candidates = currentFiltered();
+      if (!candidates.length) return;
+      if (candidates.length > 1 && lastPicked) {
+        const others = candidates.filter((r) => r.filename !== lastPicked);
+        if (others.length) candidates = others;
+      }
+      const pick = candidates[Math.floor(Math.random() * candidates.length)];
+      lastPicked = pick.filename;
+      location.hash = `#/recipe/${encodeURIComponent(pick.filename)}`;
+    });
     // 태그 목록은 검색어 입력마다 다시 그려지므로(선택 가능한 태그 좁히기),
     // 이벤트 위임으로 한 번만 등록한다.
     document.getElementById('tag-list').addEventListener('click', (e) => {
@@ -192,9 +221,8 @@
   // 한글 입력 중 조합(IME) 상태가 끊기지 않는다.
   function renderResults() {
     const all = manifestOrder.map((fn) => recipes.get(fn)).filter(Boolean);
-    const normal = all.filter((r) => !r.error);
     const broken = all.filter((r) => r.error);
-    const filtered = normal.filter(matchesFilters);
+    const filtered = currentFiltered();
 
     renderTagList(filtered);
 
@@ -220,6 +248,7 @@
 
     document.getElementById('card-grid').innerHTML = cardsHtml + brokenHtml + emptyHtml;
     document.getElementById('result-count').textContent = `${filtered.length}개 레시피${broken.length ? ` · 오류 ${broken.length}개` : ''}`;
+    document.getElementById('random-btn').disabled = filtered.length === 0;
   }
 
   // 현재 필터(선택된 태그 + 검색어)를 만족하는 레시피들이 가진 태그만 보여준다.
@@ -268,7 +297,7 @@
       <header class="detail-header">
         <h2>${escapeHtml(r.name || r.filename)}</h2>
         <div class="detail-meta">${r.servings ? `${escapeHtml(String(r.servings))}인분` : ''}</div>
-        ${r.tags.length ? `<div class="card-tags">${r.tags.map((t) => `<span class="chip chip-static">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+        ${r.tags.length ? `<div class="card-tags">${r.tags.map((t) => `<a class="chip chip-static chip-link" href="${tagFilterHash(t)}">${escapeHtml(t)}</a>`).join('')}</div>` : ''}
         ${sourceHtml ? `<ul class="source-list">${sourceHtml}</ul>` : ''}
       </header>
 

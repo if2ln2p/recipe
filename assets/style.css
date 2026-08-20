@@ -139,6 +139,18 @@ body {
   padding: 4px 12px;
 }
 
+/* 상세 페이지의 태그: 누르면 그 태그로 필터된 목록으로 간다 */
+.chip-link {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.chip-link:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 .toolbar-footer {
   display: flex;
   align-items: center;
@@ -163,6 +175,20 @@ body {
 
 .btn-reset:hover {
   background: var(--accent-bg);
+}
+
+.btn-reset:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-reset:disabled:hover {
+  background: var(--surface);
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
 }
 
 /* card grid */
