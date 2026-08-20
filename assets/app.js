@@ -3,6 +3,7 @@
 
   const MANIFEST_URL = 'recipes/index.json';
   const RECIPES_DIR = 'recipes/';
+  const UNITS_URL = 'units.md';
   const SITE_TITLE = '우리집 레시피';
 
   const appEl = document.getElementById('app');
@@ -303,6 +304,49 @@
     }
   }
 
+  // --- 계량 단위 페이지 ---
+  // 내용은 units.md에 있어서 코드를 고치지 않고 단위를 추가할 수 있다.
+  // 목록에 섞이지 않도록 recipes/ 밖에 둔다.
+
+  let unitsDoc = null;
+
+  async function loadUnits() {
+    if (unitsDoc) return unitsDoc;
+    try {
+      const res = await fetch(UNITS_URL, { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      unitsDoc = { raw: await res.text(), error: null };
+    } catch (e) {
+      unitsDoc = { raw: null, error: 'units.md를 불러오지 못했습니다: ' + e.message };
+    }
+    return unitsDoc;
+  }
+
+  async function renderUnits() {
+    document.title = `계량 단위 · ${SITE_TITLE}`;
+    releaseWakeLock();
+
+    appEl.innerHTML = `
+      <a class="back-link" href="#/">← 목록으로</a>
+      <div id="units-content" class="detail-content"><p class="muted">불러오는 중...</p></div>
+    `;
+
+    const doc = await loadUnits();
+    const el = document.getElementById('units-content');
+    if (!el) return; // 불러오는 사이 다른 화면으로 이동한 경우
+
+    if (doc.error) {
+      el.innerHTML = `<div class="notice notice-error">${escapeHtml(doc.error)}</div>`;
+      return;
+    }
+    try {
+      const html = marked.parse(doc.raw || '');
+      el.innerHTML = window.DOMPurify ? DOMPurify.sanitize(html) : html;
+    } catch (e) {
+      el.innerHTML = `<div class="notice notice-error">렌더링 중 오류가 발생했습니다: ${escapeHtml(e.message)}</div>`;
+    }
+  }
+
   function renderDetailContent(r, mode, el) {
     if (mode === 'raw') {
       if (r.raw === null) {
@@ -357,6 +401,8 @@
     const m = /^#\/recipe\/(.+)$/.exec(hash);
     if (m) {
       renderDetail(decodeURIComponent(m[1]));
+    } else if (/^#\/units(\?|$)/.test(hash)) {
+      renderUnits();
     } else {
       // URL에 담긴 검색어·태그를 상태로 복원한 뒤 그린다.
       const parsed = parseListParams(hash);

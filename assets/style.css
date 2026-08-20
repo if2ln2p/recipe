@@ -36,6 +36,10 @@ body {
   position: sticky;
   top: 0;
   z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .site-title {
@@ -43,6 +47,17 @@ body {
   font-weight: 700;
   color: var(--text);
   text-decoration: none;
+}
+
+.site-nav a {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.site-nav a:hover {
+  text-decoration: underline;
 }
 
 #app {
@@ -321,6 +336,25 @@ body {
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 0.9em;
+}
+
+.detail-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+
+.detail-content th,
+.detail-content td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.detail-content th {
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .raw-view {
