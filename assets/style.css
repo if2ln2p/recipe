@@ -383,6 +383,63 @@ body {
   font-weight: 600;
 }
 
+/* 관련 레시피 */
+
+.related {
+  margin-top: 28px;
+}
+
+.related-title {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.related-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.related-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+}
+
+a.related-item:hover {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.related-name {
+  font-weight: 600;
+  font-size: 0.98rem;
+}
+
+.related-meta {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* related에 적힌 이름과 맞는 레시피가 없을 때 (대개 오타) */
+.related-missing {
+  background: var(--error-bg);
+  border-color: #f2c9c9;
+  color: var(--error-text);
+}
+
+.related-missing .related-meta {
+  color: var(--error-text);
+}
+
 .raw-view {
   margin: 0;
   padding: 16px;

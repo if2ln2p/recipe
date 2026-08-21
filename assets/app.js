@@ -56,14 +56,18 @@
     const servings = (typeof data.servings === 'number' || typeof data.servings === 'string')
       ? data.servings
       : null;
+    // related는 파일명이 아니라 레시피 이름(frontmatter의 name)으로 적는다.
+    const related = Array.isArray(data.related)
+      ? data.related.map((s) => String(s).trim()).filter(Boolean)
+      : [];
 
-    return { name: data.name.trim(), tags, source, servings, body };
+    return { name: data.name.trim(), tags, source, servings, related, body };
   }
 
   function buildRecord(filename, raw) {
     const base = {
       filename, raw, error: null,
-      name: null, tags: [], source: [], servings: null, body: '',
+      name: null, tags: [], source: [], servings: null, related: [], body: '',
     };
     try {
       const parsed = parseFrontmatter(raw);
@@ -98,10 +102,77 @@
       } catch (e) {
         recipes.set(filename, {
           filename, raw: null, error: '파일을 불러오지 못했습니다: ' + e.message,
-          name: null, tags: [], source: [], servings: null, body: '',
+          name: null, tags: [], source: [], servings: null, related: [], body: '',
         });
       }
     }));
+
+    buildNameIndex();
+  }
+
+  // --- 관련 레시피 ---
+  // 레시피 md의 `related: [이름1, 이름2]`에 적힌 이름을 실제 레시피로 연결한다.
+  // 파일명이 아닌 이름으로 적기 때문에 이름 -> 파일명 색인이 필요하다.
+
+  /** @type {Map<string, string>} recipe name -> filename */
+  const recipesByName = new Map();
+
+  function buildNameIndex() {
+    recipesByName.clear();
+    manifestOrder.forEach((fn) => {
+      const r = recipes.get(fn);
+      if (!r || r.error || !r.name) return;
+      // 이름이 겹치면 매니페스트에서 먼저 나온 파일을 쓴다.
+      if (!recipesByName.has(r.name)) recipesByName.set(r.name, fn);
+    });
+  }
+
+  // 자기 자신과 중복은 빼고, 찾지 못한 이름은 오타를 알아챌 수 있도록 그대로 돌려준다.
+  function resolveRelated(r) {
+    const seen = new Set();
+    const found = [];
+    const missing = [];
+
+    (r.related || []).forEach((name) => {
+      if (seen.has(name)) return;
+      seen.add(name);
+
+      const fn = recipesByName.get(name);
+      if (fn === undefined) {
+        missing.push(name);
+        return;
+      }
+      if (fn === r.filename) return;
+      found.push(recipes.get(fn));
+    });
+
+    return { found, missing };
+  }
+
+  function relatedSectionHtml(r) {
+    const { found, missing } = resolveRelated(r);
+    if (!found.length && !missing.length) return '';
+
+    const foundHtml = found.map((rel) => `
+      <a class="related-item" href="#/recipe/${encodeURIComponent(rel.filename)}">
+        <span class="related-name">${escapeHtml(rel.name)}</span>
+        ${rel.servings ? `<span class="related-meta">${escapeHtml(String(rel.servings))}인분</span>` : ''}
+      </a>
+    `).join('');
+
+    const missingHtml = missing.map((name) => `
+      <span class="related-item related-missing" title="이 이름의 레시피를 찾을 수 없습니다">
+        <span class="related-name">${escapeHtml(name)}</span>
+        <span class="related-meta">찾을 수 없음</span>
+      </span>
+    `).join('');
+
+    return `
+      <section class="related">
+        <h3 class="related-title">관련 레시피</h3>
+        <div class="related-list">${foundHtml}${missingHtml}</div>
+      </section>
+    `;
   }
 
   // --- 목록 필터 상태를 URL 해시에 반영한다 (#/?q=두부&tag=한식) ---
@@ -309,6 +380,8 @@
         ${r.raw !== null ? `<button type="button" id="toggle-raw" class="toggle-btn ${mode === 'raw' ? 'toggle-active' : ''}" aria-pressed="${mode === 'raw'}">원문 보기</button>` : ''}
         ${r.raw !== null ? '<button type="button" id="copy-raw" class="btn-copy">원문 복사</button>' : ''}
       </div>
+
+      ${relatedSectionHtml(r)}
     `;
 
     renderDetailContent(r, mode, document.getElementById('detail-content'));
