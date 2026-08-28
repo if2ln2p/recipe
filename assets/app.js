@@ -60,14 +60,27 @@
     const related = Array.isArray(data.related)
       ? data.related.map((s) => String(s).trim()).filter(Boolean)
       : [];
+    const thumbnail = typeof data.thumbnail === 'string'
+      ? safeImageUrl(data.thumbnail.trim())
+      : null;
 
-    return { name: data.name.trim(), tags, source, servings, related, body };
+    return { name: data.name.trim(), tags, source, servings, related, thumbnail, body };
+  }
+
+  // 썸네일 경로는 <img src>에 그대로 들어가므로 스킴을 제한한다.
+  // http(s) 절대 URL이거나, 스킴 없는 상대 경로(assets/images/...)만 허용한다.
+  function safeImageUrl(url) {
+    if (!url) return null;
+    if (/^https?:\/\//i.test(url)) return url;
+    if (url.startsWith('//')) return null;              // 프로토콜 상대 URL
+    if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return null;  // javascript:, data: 등
+    return url;
   }
 
   function buildRecord(filename, raw) {
     const base = {
       filename, raw, error: null,
-      name: null, tags: [], source: [], servings: null, related: [], body: '',
+      name: null, tags: [], source: [], servings: null, related: [], thumbnail: null, body: '',
     };
     try {
       const parsed = parseFrontmatter(raw);
@@ -102,12 +115,42 @@
       } catch (e) {
         recipes.set(filename, {
           filename, raw: null, error: '파일을 불러오지 못했습니다: ' + e.message,
-          name: null, tags: [], source: [], servings: null, related: [], body: '',
+          name: null, tags: [], source: [], servings: null, related: [], thumbnail: null, body: '',
         });
       }
     }));
 
     buildNameIndex();
+  }
+
+  // --- 썸네일 ---
+  // 레시피 md의 `thumbnail: assets/images/파일.jpg`에 적은 이미지를 목록 카드와
+  // 상세 페이지에 보여준다. http(s) 주소도 쓸 수 있다.
+
+  function thumbHtml(r, variant) {
+    if (!r.thumbnail) return '';
+    // 목록 카드는 스크롤을 내려야 보이므로 lazy, 상세 페이지 것은 바로 보이므로 eager.
+    const loading = variant === 'card' ? 'lazy' : 'eager';
+    return `
+      <div class="thumb thumb-${variant}">
+        <img src="${escapeHtml(r.thumbnail)}" alt="" loading="${loading}" data-thumb>
+      </div>
+    `;
+  }
+
+  // 경로가 틀렸거나 이미지를 못 불러오면 깨진 아이콘 대신 자리를 아예 없앤다.
+  function wireThumbFallback(root) {
+    root.querySelectorAll('img[data-thumb]').forEach((img) => {
+      img.addEventListener('error', () => {
+        const box = img.closest('.thumb');
+        if (box) box.remove();
+      });
+      // 캐시된 실패 이미지는 리스너를 걸기 전에 이미 error가 끝났을 수 있다.
+      if (img.complete && img.naturalWidth === 0) {
+        const box = img.closest('.thumb');
+        if (box) box.remove();
+      }
+    });
   }
 
   // --- 관련 레시피 ---
@@ -299,6 +342,7 @@
 
     const cardsHtml = filtered.map((r) => `
       <a class="card" href="#/recipe/${encodeURIComponent(r.filename)}">
+        ${thumbHtml(r, 'card')}
         <h3 class="card-title">${escapeHtml(r.name)}</h3>
         <div class="card-meta">${r.servings ? `${escapeHtml(String(r.servings))}인분` : ''}</div>
         <div class="card-tags">${r.tags.map((t) => `<span class="chip chip-static">${escapeHtml(t)}</span>`).join('')}</div>
@@ -317,7 +361,9 @@
       ? '<p class="muted">조건에 맞는 레시피가 없습니다.</p>'
       : '';
 
-    document.getElementById('card-grid').innerHTML = cardsHtml + brokenHtml + emptyHtml;
+    const grid = document.getElementById('card-grid');
+    grid.innerHTML = cardsHtml + brokenHtml + emptyHtml;
+    wireThumbFallback(grid);
     document.getElementById('result-count').textContent = `${filtered.length}개 레시피${broken.length ? ` · 오류 ${broken.length}개` : ''}`;
     document.getElementById('random-btn').disabled = filtered.length === 0;
   }
@@ -366,6 +412,7 @@
     appEl.innerHTML = `
       <a class="back-link" href="#/">← 목록으로</a>
       <header class="detail-header">
+        ${thumbHtml(r, 'detail')}
         <h2>${escapeHtml(r.name || r.filename)}</h2>
         <div class="detail-meta">${r.servings ? `${escapeHtml(String(r.servings))}인분` : ''}</div>
         ${r.tags.length ? `<div class="card-tags">${r.tags.map((t) => `<a class="chip chip-static chip-link" href="${tagFilterHash(t)}">${escapeHtml(t)}</a>`).join('')}</div>` : ''}
@@ -385,6 +432,7 @@
     `;
 
     renderDetailContent(r, mode, document.getElementById('detail-content'));
+    wireThumbFallback(appEl);
 
     const toggleBtn = document.getElementById('toggle-raw');
     if (toggleBtn) {
