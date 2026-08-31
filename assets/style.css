@@ -206,7 +206,8 @@ body {
 }
 
 .card {
-  display: block;
+  display: flex;
+  flex-direction: column;
   padding: 16px;
   border-radius: var(--radius);
   background: var(--surface);
@@ -222,6 +223,13 @@ body {
 .card-title {
   margin: 0 0 6px;
   font-size: 1.05rem;
+}
+
+/* 같은 줄에 썸네일이 있는 카드가 있으면 그 카드들의 글자는 사진 아래로 내려간다.
+   썸네일이 없는 카드는 글자를 아래로 밀어 그 줄에서 눈높이를 맞춘다.
+   :has()를 지원하지 않는 브라우저에서는 지금처럼 위에 붙는다. */
+.card:not(:has(.thumb)) .card-title {
+  margin-top: auto;
 }
 
 .card-meta {
@@ -402,6 +410,7 @@ body {
   margin: -16px -16px 12px;
   border-radius: var(--radius) var(--radius) 0 0;
   aspect-ratio: 16 / 10;
+  flex: none; /* 카드가 flex 컬럼이라 줄어들지 않게 고정 */
 }
 
 /* 상세 페이지: 제목 위 배너 */
