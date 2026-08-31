@@ -8,6 +8,7 @@
   --accent-bg: #dbeafe;
   --error-bg: #fdecec;
   --error-text: #9c2b2b;
+  --placeholder: #e6ebf1;
   --radius: 10px;
 }
 
@@ -225,9 +226,21 @@ body {
   font-size: 1.05rem;
 }
 
-/* 같은 줄에 썸네일이 있는 카드가 있으면 그 카드들의 글자는 사진 아래로 내려간다.
-   썸네일이 없는 카드는 글자를 아래로 밀어 그 줄에서 눈높이를 맞춘다.
-   :has()를 지원하지 않는 브라우저에서는 지금처럼 위에 붙는다. */
+/* 썸네일이 없는 카드는 사진 자리를 회색으로 채워 썸네일 카드와 같은 모양을 유지한다.
+   사진을 불러오지 못해 썸네일이 지워진 카드에도 그대로 적용된다.
+   오류 카드는 배경색이 따로 있으므로 제외한다.
+   :has()를 지원하지 않는 브라우저에서는 지금처럼 글자만 있는 카드가 된다. */
+.card:not(.card-broken):not(:has(.thumb))::before {
+  content: '';
+  display: block;
+  margin: -16px -16px 12px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  aspect-ratio: 16 / 10;
+  background: var(--placeholder);
+  flex: none;
+}
+
+/* 태그 줄 수가 달라도 같은 줄에서 글자 눈높이가 맞도록 아래로 민다 */
 .card:not(:has(.thumb)) .card-title {
   margin-top: auto;
 }
