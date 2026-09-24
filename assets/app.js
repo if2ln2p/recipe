@@ -468,7 +468,6 @@
       <a class="card" href="#/recipe/${encodeURIComponent(r.filename)}">
         ${thumbHtml(r, 'card')}
         <h3 class="card-title">${escapeHtml(r.name)}</h3>
-        <div class="card-meta">${r.servings ? `${escapeHtml(String(r.servings))}인분` : ''}</div>
         <div class="card-tags">${r.tags.map((t) => `<span class="chip chip-static">${escapeHtml(t)}</span>`).join('')}</div>
       </a>
     `).join('');
@@ -538,7 +537,7 @@
       <header class="detail-header">
         ${thumbHtml(r, 'detail')}
         <h2>${escapeHtml(r.name || r.filename)}</h2>
-        <div class="detail-meta">${r.servings ? `${escapeHtml(String(r.servings))}인분` : ''}</div>
+        ${r.servings ? `<p class="detail-servings">${escapeHtml(String(r.servings))}인분</p>` : ''}
         ${r.tags.length ? `<div class="card-tags">${r.tags.map((t) => `<a class="chip chip-static chip-link" href="${tagFilterHash(t)}">${escapeHtml(t)}</a>`).join('')}</div>` : ''}
         ${sourceHtml ? `<ul class="source-list">${sourceHtml}</ul>` : ''}
       </header>

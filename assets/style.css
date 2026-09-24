@@ -291,12 +291,6 @@ body {
   margin-top: auto;
 }
 
-.card-meta {
-  color: var(--text-muted);
-  font-size: 0.88rem;
-  min-height: 1em;
-}
-
 .card-tags {
   display: flex;
   flex-wrap: wrap;
@@ -336,9 +330,18 @@ body {
   font-size: 1.5rem;
 }
 
-.detail-meta {
-  color: var(--text-muted);
-  font-size: 0.95rem;
+/* 인분 수는 조리 중에 가장 자주 확인하는 값이라
+   태그(연한 칩)와 구분되도록 꽉 찬 배지로 둔다. */
+.detail-servings {
+  display: inline-block;
+  margin: 2px 0 0;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .source-list {
