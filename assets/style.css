@@ -209,11 +209,26 @@ body {
   white-space: nowrap;
 }
 
-/* 숫자 한 글자짜리 버튼이라 폭을 맞춰 나란히 보이게 한다 */
-.chip-num {
+/* 한 줄 개수 스테퍼: − 숫자 + */
+
+.stepper {
+  gap: 4px;
+}
+
+.chip-step {
   justify-content: center;
-  min-width: 34px;
-  padding: 6px 10px;
+  min-width: 32px;
+  padding: 6px 0;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* 숫자가 바뀌어도 −/+ 버튼이 움직이지 않도록 폭을 고정한다 */
+.stepper-value {
+  min-width: 22px;
+  text-align: center;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .chip:disabled {

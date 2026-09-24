@@ -77,16 +77,16 @@
     const cols = effectiveColumns();
     grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
 
-    const group = document.getElementById('column-group');
-    if (group) {
-      group.querySelectorAll('.chip[data-cols]').forEach((btn) => {
-        const n = Number(btn.dataset.cols);
-        const on = n === cols;
-        btn.classList.toggle('chip-active', on);
-        btn.setAttribute('aria-pressed', String(on));
-        btn.disabled = n > max;
-        btn.title = n > max ? '화면이 좁아 이 개수로는 표시할 수 없습니다' : '';
-      });
+    const valueEl = document.getElementById('column-value');
+    if (valueEl) valueEl.textContent = String(cols);
+
+    const decBtn = document.getElementById('column-dec');
+    const incBtn = document.getElementById('column-inc');
+    if (decBtn) decBtn.disabled = cols <= 1;
+    if (incBtn) {
+      incBtn.disabled = cols >= max;
+      // 4개까지 갈 수 있는데 막혔다면 이유는 화면 폭이다.
+      incBtn.title = (cols >= max && max < MAX_COLUMNS) ? '화면이 좁아 더 늘릴 수 없습니다' : '';
     }
 
     const thumbBtn = document.getElementById('thumb-toggle');
@@ -364,11 +364,11 @@
         <div class="toolbar-footer">
           <span class="result-count" id="result-count"></span>
           <div class="toolbar-actions">
-            <div class="view-group" id="column-group" role="group" aria-label="한 줄에 표시할 개수">
+            <div class="view-group stepper" id="column-stepper" role="group" aria-label="한 줄에 표시할 개수">
               <span class="view-label">한 줄</span>
-              ${Array.from({ length: MAX_COLUMNS }, (_, i) => i + 1).map((n) => `
-                <button type="button" class="chip chip-num" data-cols="${n}">${n}</button>
-              `).join('')}
+              <button type="button" class="chip chip-step" id="column-dec" data-step="-1" aria-label="한 개 줄이기">−</button>
+              <span class="stepper-value" id="column-value" aria-live="polite"></span>
+              <button type="button" class="chip chip-step" id="column-inc" data-step="1" aria-label="한 개 늘리기">+</button>
             </div>
             <button type="button" id="thumb-toggle" class="chip">썸네일</button>
             <button type="button" id="random-btn" class="btn-reset">아무거나</button>
@@ -409,10 +409,15 @@
     });
     // 보기 설정은 목록을 다시 그리지 않고 그리드만 바꾼다
     // (검색어를 입력하는 중에 눌러도 한글 조합이 끊기지 않는다).
-    document.getElementById('column-group').addEventListener('click', (e) => {
-      const btn = e.target.closest('.chip[data-cols]');
+    document.getElementById('column-stepper').addEventListener('click', (e) => {
+      const btn = e.target.closest('.chip-step');
       if (!btn || btn.disabled) return;
-      columnPref = Number(btn.dataset.cols);
+      // 저장된 값이 아니라 지금 보이는 개수를 기준으로 올리고 내린다.
+      // (화면이 좁아 줄여 보여주는 중에도 버튼이 눌리는 대로 반응한다)
+      const current = effectiveColumns();
+      const next = Math.min(fitColumns(MIN_CARD_W), Math.max(1, current + Number(btn.dataset.step)));
+      if (next === current) return;
+      columnPref = next;
       saveView();
       applyView();
     });
