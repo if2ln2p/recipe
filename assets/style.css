@@ -105,6 +105,14 @@ body {
   outline-offset: 1px;
 }
 
+/* 검색창 바로 아래 줄: 아무거나 / 초기화 */
+.search-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .tag-list {
   display: flex;
   flex-wrap: wrap;

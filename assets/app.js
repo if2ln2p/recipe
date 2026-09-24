@@ -371,6 +371,10 @@
     appEl.innerHTML = `
       <section class="toolbar">
         <input type="search" id="search-input" class="search-input" placeholder="레시피 이름, 재료, 태그 검색..." value="${escapeHtml(query)}">
+        <div class="search-actions">
+          <button type="button" id="random-btn" class="btn-reset">아무거나</button>
+          <button type="button" id="reset-btn" class="btn-reset">초기화</button>
+        </div>
         <div class="tag-list" id="tag-list"></div>
         <div class="toolbar-footer">
           <span class="result-count" id="result-count"></span>
@@ -383,8 +387,6 @@
             </div>
             <button type="button" id="thumb-toggle" class="chip">썸네일</button>
             <button type="button" id="tag-toggle" class="chip">태그</button>
-            <button type="button" id="random-btn" class="btn-reset">아무거나</button>
-            <button type="button" id="reset-btn" class="btn-reset">초기화</button>
           </div>
         </div>
       </section>
