@@ -17,39 +17,83 @@
   let query = '';
   let lastPicked = null;
 
-  // --- 카드 크기 ---
-  // 카드 최소 너비만 바꾸면 그리드(auto-fill)가 한 줄에 몇 개를 넣을지 알아서 정한다.
-  // 760px 본문 기준으로 작게 4개, 보통 3개, 크게 2개가 들어간다.
-  // 작게(160)는 폰 화면(약 351px)에서도 2개가 들어가도록 맞춘 값이다.
+  // --- 보기 설정 (한 줄 개수, 썸네일) ---
   // 쓰는 사람 화면에 따라 달라지는 취향이라 공유되는 URL이 아닌 localStorage에 둔다.
 
-  const CARD_SIZE_KEY = 'recipe:card-size';
-  const CARD_SIZES = { small: 160, medium: 230, large: 340 };
-  const CARD_SIZE_LABELS = { small: '작게', medium: '보통', large: '크게' };
-  const DEFAULT_CARD_SIZE = 'medium';
+  const VIEW_KEY = 'recipe:view';
+  const MAX_COLUMNS = 4;
+  const GRID_GAP = 14;      // style.css의 .card-grid gap과 맞춰야 한다
+  const AUTO_CARD_W = 230;  // 기본 개수를 정할 때 기준으로 삼는 카드 폭
+  const MIN_CARD_W = 150;   // 이보다 좁아지면 카드를 알아보기 어렵다
 
-  let cardSize = DEFAULT_CARD_SIZE;
+  // null이면 화면 크기에 맞춰 자동으로 정한다. 숫자면 사용자가 고른 값.
+  let columnPref = null;
+  let showThumbs = true;
 
-  function loadCardSize() {
+  function loadView() {
     try {
-      const saved = localStorage.getItem(CARD_SIZE_KEY);
-      if (saved && CARD_SIZES[saved]) cardSize = saved;
+      const saved = JSON.parse(localStorage.getItem(VIEW_KEY) || '{}');
+      if (Number.isInteger(saved.cols) && saved.cols >= 1 && saved.cols <= MAX_COLUMNS) {
+        columnPref = saved.cols;
+      }
+      if (typeof saved.thumbs === 'boolean') showThumbs = saved.thumbs;
     } catch (e) {
-      // 시크릿 모드 등에서 막히면 기본값으로 둔다.
+      // 시크릿 모드이거나 저장된 값이 깨졌으면 기본값으로 둔다.
     }
   }
 
-  function saveCardSize() {
+  function saveView() {
     try {
-      localStorage.setItem(CARD_SIZE_KEY, cardSize);
+      localStorage.setItem(VIEW_KEY, JSON.stringify({ cols: columnPref, thumbs: showThumbs }));
     } catch (e) {
       // 저장에 실패해도 이번 방문 동안은 그대로 쓴다.
     }
   }
 
-  // CSS 변수만 바꾸면 그리드가 즉시 다시 배치되므로 목록을 다시 그릴 필요가 없다.
-  function applyCardSize() {
-    document.documentElement.style.setProperty('--card-w', CARD_SIZES[cardSize] + 'px');
+  // 카드 하나가 targetW는 되도록 할 때 한 줄에 몇 개까지 들어가는지
+  function fitColumns(targetW) {
+    const grid = document.getElementById('card-grid');
+    const width = grid ? grid.getBoundingClientRect().width : 0;
+    if (!width) return 1;
+    const n = Math.floor((width + GRID_GAP) / (targetW + GRID_GAP));
+    return Math.max(1, Math.min(MAX_COLUMNS, n));
+  }
+
+  // 화면이 좁으면 사용자가 고른 개수보다 적게 보여준다.
+  // 고른 값 자체는 남겨두므로 넓은 화면으로 돌아오면 그대로 복원된다.
+  function effectiveColumns() {
+    return Math.min(columnPref ?? fitColumns(AUTO_CARD_W), fitColumns(MIN_CARD_W));
+  }
+
+  // 목록을 다시 그리지 않고 그리드와 버튼 상태만 갱신한다.
+  // 목록 화면이 아니면 아무것도 하지 않는다.
+  function applyView() {
+    const grid = document.getElementById('card-grid');
+    if (!grid) return;
+
+    grid.classList.toggle('no-thumbs', !showThumbs);
+
+    const max = fitColumns(MIN_CARD_W);
+    const cols = effectiveColumns();
+    grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+
+    const group = document.getElementById('column-group');
+    if (group) {
+      group.querySelectorAll('.chip[data-cols]').forEach((btn) => {
+        const n = Number(btn.dataset.cols);
+        const on = n === cols;
+        btn.classList.toggle('chip-active', on);
+        btn.setAttribute('aria-pressed', String(on));
+        btn.disabled = n > max;
+        btn.title = n > max ? '화면이 좁아 이 개수로는 표시할 수 없습니다' : '';
+      });
+    }
+
+    const thumbBtn = document.getElementById('thumb-toggle');
+    if (thumbBtn) {
+      thumbBtn.classList.toggle('chip-active', showThumbs);
+      thumbBtn.setAttribute('aria-pressed', String(showThumbs));
+    }
   }
 
   function escapeHtml(str) {
@@ -320,13 +364,13 @@
         <div class="toolbar-footer">
           <span class="result-count" id="result-count"></span>
           <div class="toolbar-actions">
-            <div class="size-group" id="size-group" role="group" aria-label="카드 크기">
-              <span class="size-label">크기</span>
-              ${Object.keys(CARD_SIZES).map((key) => `
-                <button type="button" class="chip ${key === cardSize ? 'chip-active' : ''}"
-                        data-size="${key}" aria-pressed="${key === cardSize}">${CARD_SIZE_LABELS[key]}</button>
+            <div class="view-group" id="column-group" role="group" aria-label="한 줄에 표시할 개수">
+              <span class="view-label">한 줄</span>
+              ${Array.from({ length: MAX_COLUMNS }, (_, i) => i + 1).map((n) => `
+                <button type="button" class="chip chip-num" data-cols="${n}">${n}</button>
               `).join('')}
             </div>
+            <button type="button" id="thumb-toggle" class="chip">썸네일</button>
             <button type="button" id="random-btn" class="btn-reset">아무거나</button>
             <button type="button" id="reset-btn" class="btn-reset">초기화</button>
           </div>
@@ -336,6 +380,8 @@
     `;
 
     renderResults();
+    // 그리드가 만들어진 뒤에야 폭을 잴 수 있으므로 여기서 보기 설정을 적용한다.
+    applyView();
 
     document.getElementById('search-input').addEventListener('input', (e) => {
       query = e.target.value;
@@ -361,19 +407,19 @@
       lastPicked = pick.filename;
       location.hash = `#/recipe/${encodeURIComponent(pick.filename)}`;
     });
-    // 카드 크기는 CSS 변수로 반영되므로 목록을 다시 그리지 않고
-    // 선택 표시만 바꾼다 (검색어 입력 중이어도 끊기지 않는다).
-    document.getElementById('size-group').addEventListener('click', (e) => {
-      const btn = e.target.closest('.chip[data-size]');
-      if (!btn || btn.dataset.size === cardSize) return;
-      cardSize = btn.dataset.size;
-      applyCardSize();
-      saveCardSize();
-      e.currentTarget.querySelectorAll('.chip[data-size]').forEach((b) => {
-        const on = b.dataset.size === cardSize;
-        b.classList.toggle('chip-active', on);
-        b.setAttribute('aria-pressed', String(on));
-      });
+    // 보기 설정은 목록을 다시 그리지 않고 그리드만 바꾼다
+    // (검색어를 입력하는 중에 눌러도 한글 조합이 끊기지 않는다).
+    document.getElementById('column-group').addEventListener('click', (e) => {
+      const btn = e.target.closest('.chip[data-cols]');
+      if (!btn || btn.disabled) return;
+      columnPref = Number(btn.dataset.cols);
+      saveView();
+      applyView();
+    });
+    document.getElementById('thumb-toggle').addEventListener('click', () => {
+      showThumbs = !showThumbs;
+      saveView();
+      applyView();
     });
     // 태그 목록은 검색어 입력마다 다시 그려지므로(선택 가능한 태그 좁히기),
     // 이벤트 위임으로 한 번만 등록한다.
@@ -621,11 +667,13 @@
 
   async function init() {
     marked.setOptions({ gfm: true, breaks: false });
-    loadCardSize();
-    applyCardSize();
+    loadView();
     await loadRecipes();
     route();
     window.addEventListener('hashchange', route);
+    // 창 크기가 바뀌면 들어갈 수 있는 개수도 달라진다.
+    // 목록 화면이 아니면 applyView가 알아서 빠져나간다.
+    window.addEventListener('resize', applyView);
     // 화면을 껐다 켜거나 탭을 다시 열면 잠금이 해제되므로 다시 건다.
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && isDetailRoute()) requestWakeLock();

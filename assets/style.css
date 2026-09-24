@@ -10,9 +10,6 @@
   --error-text: #9c2b2b;
   --placeholder: #e6ebf1;
   --radius: 10px;
-  /* 목록 카드의 최소 너비. 이 값에 따라 한 줄 개수가 정해진다.
-     app.js가 저장된 설정으로 덮어쓴다. */
-  --card-w: 230px;
 }
 
 * {
@@ -198,31 +195,45 @@ body {
   flex-wrap: wrap;
 }
 
-/* 카드 크기 고르기 */
+/* 보기 설정 (한 줄 개수, 썸네일) */
 
-.size-group {
+.view-group {
   display: flex;
   gap: 6px;
   align-items: center;
 }
 
-.size-label {
+.view-label {
   color: var(--text-muted);
   font-size: 0.9rem;
   white-space: nowrap;
 }
 
-.size-group .chip {
-  padding: 6px 12px;
+/* 숫자 한 글자짜리 버튼이라 폭을 맞춰 나란히 보이게 한다 */
+.chip-num {
+  justify-content: center;
+  min-width: 34px;
+  padding: 6px 10px;
+}
+
+.chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.chip:disabled:hover {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text-muted);
 }
 
 /* card grid */
 
-/* 카드 최소 너비(--card-w)에 맞춰 한 줄 개수가 자동으로 정해진다.
-   min(..., 100%)은 카드보다 화면이 좁을 때 가로로 삐져나가지 않게 한다. */
+/* 한 줄 개수는 app.js가 grid-template-columns를 직접 지정한다.
+   아래 값은 스크립트가 동작하기 전(또는 막혔을 때) 쓰이는 기본 배치다. */
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(var(--card-w), 100%), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr));
   gap: 14px;
 }
 
@@ -452,6 +463,20 @@ body {
   border-radius: var(--radius);
   border: 1px solid var(--border);
   aspect-ratio: 16 / 9;
+}
+
+/* 썸네일 끄기: 사진과 회색 자리를 모두 없애 글자만 있는 카드로 만든다.
+   위의 사진·회색 자리 규칙과 특정도가 같으므로 반드시 그 뒤에 와야 한다. */
+.card-grid.no-thumbs .thumb {
+  display: none;
+}
+
+.card-grid.no-thumbs .card::before {
+  content: none;
+}
+
+.card-grid.no-thumbs .card-title {
+  margin-top: 0;
 }
 
 /* 관련 레시피 */
