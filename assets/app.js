@@ -17,7 +17,7 @@
   let query = '';
   let lastPicked = null;
 
-  // --- 보기 설정 (한 줄 개수, 썸네일) ---
+  // --- 보기 설정 (한 줄 개수, 썸네일, 태그) ---
   // 쓰는 사람 화면에 따라 달라지는 취향이라 공유되는 URL이 아닌 localStorage에 둔다.
 
   const VIEW_KEY = 'recipe:view';
@@ -29,6 +29,7 @@
   // null이면 화면 크기에 맞춰 자동으로 정한다. 숫자면 사용자가 고른 값.
   let columnPref = null;
   let showThumbs = true;
+  let showTags = true;
 
   function loadView() {
     try {
@@ -37,6 +38,7 @@
         columnPref = saved.cols;
       }
       if (typeof saved.thumbs === 'boolean') showThumbs = saved.thumbs;
+      if (typeof saved.tags === 'boolean') showTags = saved.tags;
     } catch (e) {
       // 시크릿 모드이거나 저장된 값이 깨졌으면 기본값으로 둔다.
     }
@@ -44,7 +46,9 @@
 
   function saveView() {
     try {
-      localStorage.setItem(VIEW_KEY, JSON.stringify({ cols: columnPref, thumbs: showThumbs }));
+      localStorage.setItem(VIEW_KEY, JSON.stringify({
+        cols: columnPref, thumbs: showThumbs, tags: showTags,
+      }));
     } catch (e) {
       // 저장에 실패해도 이번 방문 동안은 그대로 쓴다.
     }
@@ -72,6 +76,7 @@
     if (!grid) return;
 
     grid.classList.toggle('no-thumbs', !showThumbs);
+    grid.classList.toggle('no-tags', !showTags);
 
     const max = fitColumns(MIN_CARD_W);
     const cols = effectiveColumns();
@@ -93,6 +98,12 @@
     if (thumbBtn) {
       thumbBtn.classList.toggle('chip-active', showThumbs);
       thumbBtn.setAttribute('aria-pressed', String(showThumbs));
+    }
+
+    const tagBtn = document.getElementById('tag-toggle');
+    if (tagBtn) {
+      tagBtn.classList.toggle('chip-active', showTags);
+      tagBtn.setAttribute('aria-pressed', String(showTags));
     }
   }
 
@@ -371,6 +382,7 @@
               <button type="button" class="chip chip-step" id="column-inc" data-step="1" aria-label="한 개 늘리기">+</button>
             </div>
             <button type="button" id="thumb-toggle" class="chip">썸네일</button>
+            <button type="button" id="tag-toggle" class="chip">태그</button>
             <button type="button" id="random-btn" class="btn-reset">아무거나</button>
             <button type="button" id="reset-btn" class="btn-reset">초기화</button>
           </div>
@@ -423,6 +435,11 @@
     });
     document.getElementById('thumb-toggle').addEventListener('click', () => {
       showThumbs = !showThumbs;
+      saveView();
+      applyView();
+    });
+    document.getElementById('tag-toggle').addEventListener('click', () => {
+      showTags = !showTags;
       saveView();
       applyView();
     });

@@ -494,6 +494,12 @@ body {
   margin-top: 0;
 }
 
+/* 태그 끄기: 목록 카드 안의 태그만 숨긴다.
+   툴바의 태그 필터와 상세 페이지 태그는 .card-grid 밖이라 그대로 남는다. */
+.card-grid.no-tags .card-tags {
+  display: none;
+}
+
 /* 관련 레시피 */
 
 .related {
