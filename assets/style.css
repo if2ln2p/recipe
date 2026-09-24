@@ -10,6 +10,9 @@
   --error-text: #9c2b2b;
   --placeholder: #e6ebf1;
   --radius: 10px;
+  /* 목록 카드의 최소 너비. 이 값에 따라 한 줄 개수가 정해진다.
+     app.js가 저장된 설정으로 덮어쓴다. */
+  --card-w: 230px;
 }
 
 * {
@@ -156,6 +159,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
   margin-top: 14px;
 }
 
@@ -190,20 +195,35 @@ body {
 .toolbar-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* 카드 크기 고르기 */
+
+.size-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.size-label {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.size-group .chip {
+  padding: 6px 12px;
 }
 
 /* card grid */
 
+/* 카드 최소 너비(--card-w)에 맞춰 한 줄 개수가 자동으로 정해진다.
+   min(..., 100%)은 카드보다 화면이 좁을 때 가로로 삐져나가지 않게 한다. */
 .card-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--card-w), 100%), 1fr));
   gap: 14px;
-}
-
-@media (min-width: 640px) {
-  .card-grid {
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  }
 }
 
 .card {

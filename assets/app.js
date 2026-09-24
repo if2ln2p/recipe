@@ -17,6 +17,41 @@
   let query = '';
   let lastPicked = null;
 
+  // --- 카드 크기 ---
+  // 카드 최소 너비만 바꾸면 그리드(auto-fill)가 한 줄에 몇 개를 넣을지 알아서 정한다.
+  // 760px 본문 기준으로 작게 4개, 보통 3개, 크게 2개가 들어간다.
+  // 작게(160)는 폰 화면(약 351px)에서도 2개가 들어가도록 맞춘 값이다.
+  // 쓰는 사람 화면에 따라 달라지는 취향이라 공유되는 URL이 아닌 localStorage에 둔다.
+
+  const CARD_SIZE_KEY = 'recipe:card-size';
+  const CARD_SIZES = { small: 160, medium: 230, large: 340 };
+  const CARD_SIZE_LABELS = { small: '작게', medium: '보통', large: '크게' };
+  const DEFAULT_CARD_SIZE = 'medium';
+
+  let cardSize = DEFAULT_CARD_SIZE;
+
+  function loadCardSize() {
+    try {
+      const saved = localStorage.getItem(CARD_SIZE_KEY);
+      if (saved && CARD_SIZES[saved]) cardSize = saved;
+    } catch (e) {
+      // 시크릿 모드 등에서 막히면 기본값으로 둔다.
+    }
+  }
+
+  function saveCardSize() {
+    try {
+      localStorage.setItem(CARD_SIZE_KEY, cardSize);
+    } catch (e) {
+      // 저장에 실패해도 이번 방문 동안은 그대로 쓴다.
+    }
+  }
+
+  // CSS 변수만 바꾸면 그리드가 즉시 다시 배치되므로 목록을 다시 그릴 필요가 없다.
+  function applyCardSize() {
+    document.documentElement.style.setProperty('--card-w', CARD_SIZES[cardSize] + 'px');
+  }
+
   function escapeHtml(str) {
     return String(str)
       .replace(/&/g, '&amp;')
@@ -285,6 +320,13 @@
         <div class="toolbar-footer">
           <span class="result-count" id="result-count"></span>
           <div class="toolbar-actions">
+            <div class="size-group" id="size-group" role="group" aria-label="카드 크기">
+              <span class="size-label">크기</span>
+              ${Object.keys(CARD_SIZES).map((key) => `
+                <button type="button" class="chip ${key === cardSize ? 'chip-active' : ''}"
+                        data-size="${key}" aria-pressed="${key === cardSize}">${CARD_SIZE_LABELS[key]}</button>
+              `).join('')}
+            </div>
             <button type="button" id="random-btn" class="btn-reset">아무거나</button>
             <button type="button" id="reset-btn" class="btn-reset">초기화</button>
           </div>
@@ -318,6 +360,20 @@
       const pick = candidates[Math.floor(Math.random() * candidates.length)];
       lastPicked = pick.filename;
       location.hash = `#/recipe/${encodeURIComponent(pick.filename)}`;
+    });
+    // 카드 크기는 CSS 변수로 반영되므로 목록을 다시 그리지 않고
+    // 선택 표시만 바꾼다 (검색어 입력 중이어도 끊기지 않는다).
+    document.getElementById('size-group').addEventListener('click', (e) => {
+      const btn = e.target.closest('.chip[data-size]');
+      if (!btn || btn.dataset.size === cardSize) return;
+      cardSize = btn.dataset.size;
+      applyCardSize();
+      saveCardSize();
+      e.currentTarget.querySelectorAll('.chip[data-size]').forEach((b) => {
+        const on = b.dataset.size === cardSize;
+        b.classList.toggle('chip-active', on);
+        b.setAttribute('aria-pressed', String(on));
+      });
     });
     // 태그 목록은 검색어 입력마다 다시 그려지므로(선택 가능한 태그 좁히기),
     // 이벤트 위임으로 한 번만 등록한다.
@@ -565,6 +621,8 @@
 
   async function init() {
     marked.setOptions({ gfm: true, breaks: false });
+    loadCardSize();
+    applyCardSize();
     await loadRecipes();
     route();
     window.addEventListener('hashchange', route);
