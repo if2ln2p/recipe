@@ -105,10 +105,11 @@ body {
   outline-offset: 1px;
 }
 
-/* 검색창 바로 아래 줄: 아무거나 / 초기화 */
+/* 검색창 바로 아래 줄: 태그 검색 / 아무거나 / 초기화 */
 .search-actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
   margin-top: 10px;
 }
@@ -118,6 +119,10 @@ body {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+}
+
+.tag-list.is-hidden {
+  display: none;
 }
 
 .chip {
@@ -203,18 +208,12 @@ body {
   flex-wrap: wrap;
 }
 
-/* 보기 설정 (한 줄 개수, 썸네일) */
+/* 보기 설정 (한 줄 개수, 썸네일, 태그) */
 
 .view-group {
   display: flex;
   gap: 6px;
   align-items: center;
-}
-
-.view-label {
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  white-space: nowrap;
 }
 
 /* 한 줄 개수 스테퍼: − 숫자 + */

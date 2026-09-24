@@ -17,7 +17,7 @@
   let query = '';
   let lastPicked = null;
 
-  // --- 보기 설정 (한 줄 개수, 썸네일, 태그) ---
+  // --- 보기 설정 (한 줄 개수, 썸네일, 카드 태그, 태그 검색) ---
   // 쓰는 사람 화면에 따라 달라지는 취향이라 공유되는 URL이 아닌 localStorage에 둔다.
 
   const VIEW_KEY = 'recipe:view';
@@ -30,6 +30,7 @@
   let columnPref = null;
   let showThumbs = true;
   let showTags = true;
+  let showTagFilter = true;
 
   function loadView() {
     try {
@@ -39,6 +40,7 @@
       }
       if (typeof saved.thumbs === 'boolean') showThumbs = saved.thumbs;
       if (typeof saved.tags === 'boolean') showTags = saved.tags;
+      if (typeof saved.tagFilter === 'boolean') showTagFilter = saved.tagFilter;
     } catch (e) {
       // 시크릿 모드이거나 저장된 값이 깨졌으면 기본값으로 둔다.
     }
@@ -47,7 +49,7 @@
   function saveView() {
     try {
       localStorage.setItem(VIEW_KEY, JSON.stringify({
-        cols: columnPref, thumbs: showThumbs, tags: showTags,
+        cols: columnPref, thumbs: showThumbs, tags: showTags, tagFilter: showTagFilter,
       }));
     } catch (e) {
       // 저장에 실패해도 이번 방문 동안은 그대로 쓴다.
@@ -104,6 +106,17 @@
     if (tagBtn) {
       tagBtn.classList.toggle('chip-active', showTags);
       tagBtn.setAttribute('aria-pressed', String(showTags));
+    }
+
+    // 태그 검색을 숨겨도 이미 고른 태그는 계속 걸려 있다.
+    // renderResults가 태그 목록 안쪽만 다시 그리므로 이 클래스는 유지된다.
+    const tagList = document.getElementById('tag-list');
+    if (tagList) tagList.classList.toggle('is-hidden', !showTagFilter);
+
+    const tagFilterBtn = document.getElementById('tag-filter-toggle');
+    if (tagFilterBtn) {
+      tagFilterBtn.classList.toggle('chip-active', showTagFilter);
+      tagFilterBtn.setAttribute('aria-pressed', String(showTagFilter));
     }
   }
 
@@ -372,6 +385,7 @@
       <section class="toolbar">
         <input type="search" id="search-input" class="search-input" placeholder="레시피 이름, 재료, 태그 검색..." value="${escapeHtml(query)}">
         <div class="search-actions">
+          <button type="button" id="tag-filter-toggle" class="chip">태그 검색</button>
           <button type="button" id="random-btn" class="btn-reset">아무거나</button>
           <button type="button" id="reset-btn" class="btn-reset">초기화</button>
         </div>
@@ -380,7 +394,6 @@
           <span class="result-count" id="result-count"></span>
           <div class="toolbar-actions">
             <div class="view-group stepper" id="column-stepper" role="group" aria-label="한 줄에 표시할 개수">
-              <span class="view-label">한 줄</span>
               <button type="button" class="chip chip-step" id="column-dec" data-step="-1" aria-label="한 개 줄이기">−</button>
               <span class="stepper-value" id="column-value" aria-live="polite"></span>
               <button type="button" class="chip chip-step" id="column-inc" data-step="1" aria-label="한 개 늘리기">+</button>
@@ -442,6 +455,11 @@
     });
     document.getElementById('tag-toggle').addEventListener('click', () => {
       showTags = !showTags;
+      saveView();
+      applyView();
+    });
+    document.getElementById('tag-filter-toggle').addEventListener('click', () => {
+      showTagFilter = !showTagFilter;
       saveView();
       applyView();
     });
