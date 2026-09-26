@@ -10,6 +10,8 @@
   --error-text: #9c2b2b;
   --placeholder: #e6ebf1;
   --radius: 10px;
+  /* 버튼·칩용. 카드(--radius)보다 조금 작게 잡아 모서리만 부드럽게 꺾는다. */
+  --radius-btn: 8px;
 }
 
 * {
@@ -129,7 +131,7 @@ body {
   display: inline-flex;
   align-items: center;
   padding: 6px 14px;
-  border-radius: 999px;
+  border-radius: var(--radius-btn);
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text-muted);
@@ -184,7 +186,7 @@ body {
   background: var(--surface);
   color: var(--text);
   padding: 6px 14px;
-  border-radius: 999px;
+  border-radius: var(--radius-btn);
   font-size: 0.9rem;
   cursor: pointer;
 }
@@ -343,7 +345,7 @@ body {
   display: inline-block;
   margin: 2px 0 0;
   padding: 6px 16px;
-  border-radius: 999px;
+  border-radius: var(--radius-btn);
   background: var(--accent);
   color: #fff;
   font-size: 1rem;
@@ -379,7 +381,7 @@ body {
   background: var(--surface);
   color: var(--text-muted);
   padding: 8px 16px;
-  border-radius: 999px;
+  border-radius: var(--radius-btn);
   font-size: 0.92rem;
   cursor: pointer;
 }
@@ -401,7 +403,7 @@ body {
   background: var(--surface);
   color: var(--text);
   padding: 8px 16px;
-  border-radius: 999px;
+  border-radius: var(--radius-btn);
   font-size: 0.9rem;
   cursor: pointer;
 }
